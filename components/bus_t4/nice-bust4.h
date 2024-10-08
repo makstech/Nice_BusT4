@@ -59,11 +59,15 @@ namespace bus_t4 {
 
 /* для короткого обращения к членам класса */
 using namespace esphome::cover;
-//using esp8266::timeoutTemplate::oneShotMs;
 
+#if defined(ESP32)
+static const int _UART_NO = UART_NUM_0; /* номер uart */
+#else
+static const int _UART_NO = UART0; /* номер uart */
+#endif
 
-static const int _UART_NO=UART0; /* номер uart */
 static const int TX_P = 1;         /* пин Tx */
+static const int RX_P = 3;         /* пин Rx */
 static const uint32_t BAUD_BREAK = 9200; /* бодрэйт для длинного импульса перед пакетом */
 static const uint32_t BAUD_WORK = 19200; /* рабочий бодрэйт */
 static const uint8_t START_CODE = 0x55; /*стартовый байт пакета */

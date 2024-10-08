@@ -2,10 +2,9 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"  // для использования вспомогательных функция работ со строками
 
-
-
-
-
+#if defined(ESP32)
+#include "driver/uart.h"
+#endif
 
 namespace esphome {
 namespace bus_t4 {
@@ -69,13 +68,26 @@ void NiceBusT4::control(const CoverCall &call) {
 }
 
 void NiceBusT4::setup() {
+#if defined(ESP32)
+  // Configure the UART parameters
+  uart_config_t uart_config = {
+      .baud_rate = BAUD_WORK,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,     // No parity
+      .stop_bits = UART_STOP_BITS_1,     // 1 stop bit
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,  // Disable flow control
+      .source_clk = UART_SCLK_APB,       // Use APB clock source
+  };
 
-
+  // Apply the UART configuration
+  uart_param_config(_UART_NO, &uart_config);
+  // Install the UART driver with a buffer size of 256 bytes for RX and TX
+  uart_driver_install(_UART_NO, 256, 0, 0, NULL, 0);
+  // Set the TX and RX pins
+  uart_set_pin(_UART_NO, TX_P, RX_P, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+#else
   _uart =  uart_init(_UART_NO, BAUD_WORK, SERIAL_8N1, SERIAL_FULL, TX_P, 256, false);
-  // кто в сети?
-//  this->tx_buffer_.push(gen_inf_cmd(0x00, 0xff, FOR_ALL, WHO, GET, 0x00));
-  
-
+#endif
 }
 
 void NiceBusT4::loop() {
@@ -111,11 +123,19 @@ void NiceBusT4::loop() {
   } 
 
 
+#if defined(ESP32)
+  uint8_t c;  // Declare a variable to hold each byte read
+  while (uart_read_bytes(_UART_NO, &c, 1, 20 / portTICK_PERIOD_MS) > 0) {  // Read one byte if available
+      this->handle_char_(c);  // Process the received byte
+      this->last_uart_byte_ = millis();  // Store the current time for last byte received
+  }
+#else
   while (uart_rx_available(_uart) > 0) {
     uint8_t c = (uint8_t)uart_read_char(_uart);                // считываем байт
     this->handle_char_(c);                                     // отправляем байт на обработку
     this->last_uart_byte_ = now;
   } //while
+#endif
 
   if (this->ready_to_tx_) {   // если можно отправлять
     if (!this->tx_buffer_.empty()) {  // если есть что отправлять
@@ -936,6 +956,25 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
   // отправка данных в uart
 
   char br_ch = 0x00;                                               // для break
+  
+#if defined(ESP32)
+  // Flush the UART input buffer
+  uart_flush_input(_UART_NO);
+  // Set baud rate for the break condition
+  uart_set_baudrate(_UART_NO, BAUD_BREAK);
+  // Send the break character at the low baud rate
+  uart_write_bytes(_UART_NO, &br_ch, 1);
+  // Wait for transmission to complete
+  uart_wait_tx_done(_UART_NO, portMAX_DELAY);
+  // Add delay to ensure the baud rate switch happens after the transmission is complete
+  delayMicroseconds(90);
+  // Set the working baud rate back to the normal rate
+  uart_set_baudrate(_UART_NO, BAUD_WORK);
+  // Send the main data
+  uart_write_bytes(_UART_NO, (const char *)data, len);
+  // Wait for the main transmission to complete
+  uart_wait_tx_done(_UART_NO, portMAX_DELAY);
+#else
   uart_flush(_uart);                                               // очищаем uart
   uart_set_baudrate(_uart, BAUD_BREAK);                            // занижаем бодрэйт
   uart_write(_uart, &br_ch, 1);                                    // отправляем ноль на низкой скорости, длиинный ноль
@@ -946,7 +985,7 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
   uart_write(_uart, (char *)&data[0], len);                                // отправляем основную посылку
   //uart_write(_uart, (char *)raw_cmd_buf, sizeof(raw_cmd_buf));
   uart_wait_tx_empty(_uart);                                       // ждем завершения отправки
-
+#endif
 
 
   std::string pretty_cmd = format_hex_pretty((uint8_t*)&data[0], len);                    // для вывода команды в лог
