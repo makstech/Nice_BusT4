@@ -84,7 +84,7 @@ void NiceBusT4::setup() {
   // Install the UART driver with a buffer size of 256 bytes for RX and TX
   uart_driver_install(_UART_NO, 256, 0, 0, NULL, 0);
   // Set the TX and RX pins
-  uart_set_pin(_UART_NO, TX_P, RX_P, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  uart_set_pin(_UART_NO, TX_P, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 #else
   _uart =  uart_init(_UART_NO, BAUD_WORK, SERIAL_8N1, SERIAL_FULL, TX_P, 256, false);
 #endif
