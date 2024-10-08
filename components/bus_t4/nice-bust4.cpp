@@ -973,15 +973,15 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
   // Send the break character at the low baud rate
   uart_write_bytes(_UART_NO, &br_ch, 1);
   // Wait for transmission to complete
-  uart_wait_tx_done(_UART_NO, 50 / portMAX_DELAY);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(_UART_NO, 100));
   // Add delay to ensure the baud rate switch happens after the transmission is complete
-  delayMicroseconds(200);
+  delayMicroseconds(90);
   // Set the working baud rate back to the normal rate
   uart_set_baudrate(_UART_NO, BAUD_WORK);
   // Send the main data
   uart_write_bytes(_UART_NO, (const char *)data, len);
   // Wait for the main transmission to complete
-  uart_wait_tx_done(_UART_NO, 50 / portMAX_DELAY);
+  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(_UART_NO, 100));
 #else
   uart_flush(_uart);                                               // очищаем uart
   uart_set_baudrate(_uart, BAUD_BREAK);                            // занижаем бодрэйт
