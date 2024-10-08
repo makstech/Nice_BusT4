@@ -125,7 +125,7 @@ void NiceBusT4::loop() {
 
 #if defined(ESP32)
   uint8_t c;  // Declare a variable to hold each byte read
-  while (uart_read_bytes(_UART_NO, &c, 1, 20 / portTICK_PERIOD_MS) > 0) {  // Read one byte if available
+  while (uart_read_bytes(_UART_NO, &c, 1, 50 / portTICK_PERIOD_MS) > 0) {  // Read one byte if available
       this->handle_char_(c);  // Process the received byte
       this->last_uart_byte_ = millis();  // Store the current time for last byte received
   }
@@ -159,64 +159,75 @@ void NiceBusT4::loop() {
 
 
 void NiceBusT4::handle_char_(uint8_t c) {
+  if (this->rx_message_.size() > 256) {  // Limit the buffer size to avoid overflow
+    ESP_LOGW(TAG, "Buffer overflow detected. Clearing message buffer.");
+    this->rx_message_.clear();
+  }
+
+  ESP_LOGI(TAG, "Received byte: %02X", c);  // Log each received byte
   this->rx_message_.push_back(c);                      // кидаем байт в конец полученного сообщения
   if (!this->validate_message_()) {                    // проверяем получившееся сообщение
+    ESP_LOGW(TAG, "Message validation failed. Clearing buffer.");
     this->rx_message_.clear();                         // если проверка не прошла, то в сообщении мусор, нужно удалить
   }
 }
 
 
-bool NiceBusT4::validate_message_() {                    // проверка получившегося сообщения
-  uint32_t at = this->rx_message_.size() - 1;       // номер последнего полученного байта
-  uint8_t *data = &this->rx_message_[0];               // указатель на первый байт сообщения
-  uint8_t new_byte = data[at];                      // последний полученный байт
+bool NiceBusT4::validate_message_() {
+  uint32_t at = this->rx_message_.size() - 1;  // Last received byte index
+  uint8_t *data = &this->rx_message_[0];  // Pointer to first byte of the message
 
-  // Byte 0: HEADER1 (всегда 0x00)
-  if (at == 0)
-    return new_byte == 0x00;
-  // Byte 1: HEADER2 (всегда 0x55)
-  if (at == 1)
-    return new_byte == START_CODE;
+  // Byte 0: HEADER1 (always 0x00)
+  if (at == 0) {
+    if (data[0] != 0x00) {
+      ESP_LOGW(TAG, "Validation failed: Byte 0 should be 0x00, got %02X", data[0]);
+      return false;
+    }
+    return true;
+  }
+
+  // Byte 1: HEADER2 (always 0x55)
+  if (at == 1) {
+    if (data[1] != 0x55) {
+      ESP_LOGW(TAG, "Validation failed: Byte 1 should be 0x55, got %02X", data[1]);
+      return false;
+    }
+    return true;
+  }
 
   // Byte 2: packet_size - количество байт дальше + 1
   // Проверка не проводится
-
-  if (at == 2)
+  if (at == 2) {
     return true;
+  }
+
   uint8_t packet_size = data[2];
   uint8_t length = (packet_size + 3); // длина ожидаемого сообщения понятна
 
-
   // Byte 3: Серия (ряд) кому пакет
-  // Проверка не проводится
-  //  uint8_t command = data[3];
-  if (at == 3)
-    return true;
-
   // Byte 4: Адрес кому пакет
   // Byte 5: Серия (ряд) от кого пакет
   // Byte 6: Адрес от кого пакет
   // Byte 7: Тип сообшения CMD или INF
   // Byte 8: Количество байт дальше за вычетом двух байт CRC в конце.
-
-  if (at <= 8)
-    // Проверка не проводится
+  // Проверка не проводится
+  if (at <= 8) {
     return true;
-
-  uint8_t crc1 = (data[3] ^ data[4] ^ data[5] ^ data[6] ^ data[7] ^ data[8]);
+  }
 
   // Byte 9: crc1 = XOR (Byte 3 : Byte 8) XOR шести предыдущих байт
-  if (at == 9)
-    if (data[9] != crc1) {
-      ESP_LOGW(TAG, "Received invalid message checksum 1 %02X!=%02X", data[9], crc1);
-      return false;
-    }
+  uint8_t crc1 = (data[3] ^ data[4] ^ data[5] ^ data[6] ^ data[7] ^ data[8]);
+  if (at == 9 && data[9] != crc1) {
+    ESP_LOGW(TAG, "Validation failed: CRC1 mismatch. Expected %02X, got %02X", crc1, data[9]);
+    return false;
+  }
   // Byte 10:
   // ...
 
   // ждем пока поступят все данные пакета
-  if (at  < length)
+  if (at < length) {
     return true;
+  }
 
   // считаем crc2
   uint8_t crc2 = data[10];
@@ -224,14 +235,14 @@ bool NiceBusT4::validate_message_() {                    // проверка п�
     crc2 = (crc2 ^ data[i]);
   }
 
-  if (data[length - 1] != crc2 ) {
+  if (data[length - 1] != crc2) {
     ESP_LOGW(TAG, "Received invalid message checksum 2 %02X!=%02X", data[length - 1], crc2);
     return false;
   }
 
   // Byte Last: packet_size
   //  if (at  ==  length) {
-  if (data[length] != packet_size ) {
+  if (data[length] != packet_size) {
     ESP_LOGW(TAG, "Received invalid message size %02X!=%02X", data[length], packet_size);
     return false;
   }
@@ -248,11 +259,8 @@ bool NiceBusT4::validate_message_() {                    // проверка п�
   // здесь что-то делаем с сообщением
   parse_status_packet(rx_message_);
 
-
-
   // возвращаем false чтобы обнулить rx buffer
   return false;
-
 }
 
 
@@ -965,15 +973,15 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
   // Send the break character at the low baud rate
   uart_write_bytes(_UART_NO, &br_ch, 1);
   // Wait for transmission to complete
-  uart_wait_tx_done(_UART_NO, portMAX_DELAY);
+  uart_wait_tx_done(_UART_NO, 50 / portMAX_DELAY);
   // Add delay to ensure the baud rate switch happens after the transmission is complete
-  delayMicroseconds(90);
+  delayMicroseconds(200);
   // Set the working baud rate back to the normal rate
   uart_set_baudrate(_UART_NO, BAUD_WORK);
   // Send the main data
   uart_write_bytes(_UART_NO, (const char *)data, len);
   // Wait for the main transmission to complete
-  uart_wait_tx_done(_UART_NO, portMAX_DELAY);
+  uart_wait_tx_done(_UART_NO, 50 / portMAX_DELAY);
 #else
   uart_flush(_uart);                                               // очищаем uart
   uart_set_baudrate(_uart, BAUD_BREAK);                            // занижаем бодрэйт
