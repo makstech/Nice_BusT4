@@ -125,7 +125,7 @@ void NiceBusT4::loop() {
 
 #if defined(ESP32)
   uint8_t c;  // Declare a variable to hold each byte read
-  while (uart_read_bytes(_UART_NO, &c, 1, 50 / portTICK_PERIOD_MS) > 0) {  // Read one byte if available
+  while (uart_read_bytes(_UART_NO, &c, 1, 100) > 0) {  // Read one byte if available
       this->handle_char_(c);  // Process the received byte
       this->last_uart_byte_ = millis();  // Store the current time for last byte received
   }
