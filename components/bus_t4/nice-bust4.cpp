@@ -172,7 +172,7 @@ void NiceBusT4::handle_char_(uint8_t c) {
     this->rx_message_.clear();
   }
 
-  ESP_LOGI(TAG, "Received byte: %02X", c);  // Log each received byte
+  ESP_LOGV(TAG, "Received byte: %02X", c);  // Log each received byte
   this->rx_message_.push_back(c);                      // кидаем байт в конец полученного сообщения
   if (!this->validate_message_()) {                    // проверяем получившееся сообщение
     ESP_LOGW(TAG, "Message validation failed. Clearing buffer.");
@@ -262,13 +262,14 @@ bool NiceBusT4::validate_message_() {
 
   // для вывода пакета в лог
   std::string pretty_cmd = format_hex_pretty(rx_message_);
-  ESP_LOGI(TAG,  "Получен пакет: %S ", pretty_cmd.c_str() );
+  ESP_LOGI(TAG,  "Received packet: %S ", pretty_cmd.c_str() );
 
   // здесь что-то делаем с сообщением
   parse_status_packet(rx_message_);
 
-  // возвращаем false чтобы обнулить rx buffer
-  return false;
+  this->rx_message_.clear();
+
+  return true;
 }
 
 
