@@ -262,7 +262,7 @@ bool NiceBusT4::validate_message_() {
 
   // для вывода пакета в лог
   std::string pretty_cmd = format_hex_pretty(rx_message_);
-  ESP_LOGI(TAG,  "Received packet: %S ", pretty_cmd.c_str() );
+  ESP_LOGD(TAG,  "Received packet: %S ", pretty_cmd.c_str() );
 
   // здесь что-то делаем с сообщением
   parse_status_packet(rx_message_);
@@ -1007,7 +1007,7 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
 
 
   std::string pretty_cmd = format_hex_pretty((uint8_t*)&data[0], len);                    // для вывода команды в лог
-  ESP_LOGI(TAG,  "Отправлено: %S ", pretty_cmd.c_str() );
+  ESP_LOGD(TAG,  "Sent packet: %S ", pretty_cmd.c_str() );
 
 }
 
