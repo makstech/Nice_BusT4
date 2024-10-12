@@ -19,3 +19,4 @@ cover:
     name: "Nice Cover"
     device_class: gate
     id: nice_cover
+    uart_num: "UART_NUM_2"

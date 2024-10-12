@@ -1,3 +1,17 @@
+**Fork to support both ESP8266 and ESP32 with ability to define custom pins for UART TX/RX**
+
+```yaml
+cover:
+  - platform: bus_t4
+    name: "Nice Cover"
+    device_class: gate
+    id: nice_cover
+    # Optional variables to set custom UART TX/RX pins
+    uart_num: "UART_NUM_2"
+    tx_pin: 17
+    rx_pin: 16
+```
+
 Доступен перевод на английский
 [English](https://github.com/xdanik/Nice_BusT4)
 
