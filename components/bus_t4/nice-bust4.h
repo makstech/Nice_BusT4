@@ -461,11 +461,12 @@ class NiceBusT4 : public Component, public Cover {
     uint8_t addr_to[2]; // = 0x00ff;	 // кому пакет, адрес контроллера привода, которым управляем
     uint8_t addr_oxi[2]; // = 0x000a;	 // адрес приемника
 
-    int tx_pin_{1};  // Default TX pin
 #if defined(ESP32)
-    int rx_pin_{UART_PIN_NO_CHANGE};  // Default to no change
+    int tx_pin_{UART_PIN_NO_CHANGE};  // Default TX pin to no change
+    int rx_pin_{UART_PIN_NO_CHANGE};  // Default RX pin to no change
     uart_port_t uart_num_{UART_NUM_0};  // Default UART number
 #else
+    int tx_pin_{1};  // Default TX pin
     int rx_pin_{-1};  // Default to -1 to indicate not set
     uart_port_t uart_num_{UART0};  // Default UART number
 #endif

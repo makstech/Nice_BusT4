@@ -18,9 +18,9 @@ CONFIG_SCHEMA = cover.COVER_SCHEMA.extend({
     cv.GenerateID(): cv.declare_id(Nice),
     cv.Optional(CONF_ADDRESS): cv.hex_uint16_t,
     cv.Optional(CONF_USE_ADDRESS): cv.hex_uint16_t,
-    cv.Optional(CONF_TX_PIN, default=1): cv.int_range(min=0, max=39),
-    cv.Optional(CONF_RX_PIN, default=None): cv.int_range(min=0, max=39),
-    cv.Optional(CONF_UART_NUM, default="UART_NUM_0"): cv.one_of("UART_NUM_0", "UART_NUM_1", "UART_NUM_2", "UART0", upper=True),
+    cv.Optional(CONF_TX_PIN): cv.int_range(min=0, max=39),
+    cv.Optional(CONF_RX_PIN): cv.int_range(min=0, max=39),
+    cv.Optional(CONF_UART_NUM): cv.one_of("UART_NUM_0", "UART_NUM_1", "UART_NUM_2", "UART0", upper=True),
 }).extend(cv.COMPONENT_SCHEMA)
 
 
