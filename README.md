@@ -1,6 +1,12 @@
 **Fork to support both ESP8266 and ESP32 with ability to define custom pins for UART TX/RX**
 
 ```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/makstech/Nice_BusT4
+    refresh: 1min
+
 cover:
   - platform: bus_t4
     name: "Nice Cover"
