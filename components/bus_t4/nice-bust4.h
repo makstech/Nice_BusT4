@@ -52,6 +52,9 @@ BusT4                       ESP8266
 #include "esphome/core/helpers.h"              // парсим строки встроенными инструментами
 #include <queue>                               // для работы с очередью
 
+#if defined(ESP32)
+#include "driver/uart.h"
+#endif
 
 
 namespace esphome {
@@ -60,14 +63,6 @@ namespace bus_t4 {
 /* для короткого обращения к членам класса */
 using namespace esphome::cover;
 
-#if defined(ESP32)
-#include "driver/uart.h"
-static const int _UART_NO = UART_NUM_0; /* номер uart */
-#else
-static const int _UART_NO = UART0; /* номер uart */
-#endif
-
-static const int TX_P = 1;         /* пин Tx */
 static const uint32_t BAUD_BREAK = 9200; /* бодрэйт для длинного импульса перед пакетом */
 static const uint32_t BAUD_WORK = 19200; /* рабочий бодрэйт */
 static const uint8_t START_CODE = 0x55; /*стартовый байт пакета */
@@ -400,6 +395,25 @@ class NiceBusT4 : public Component, public Cover {
     void send_inf_cmd(std::string to_addr, std::string whose, std::string command, std::string type_command,  std::string next_data, bool data_on, std::string data_command); // длинная команда
     void set_mcu(std::string command, std::string data_command); // команда контроллеру мотора
 
+    // Handle UART settings
+    void set_tx_pin(int tx_pin) { this->tx_pin_ = tx_pin; }
+    void set_rx_pin(int rx_pin) { this->rx_pin_ = rx_pin; }
+    void set_uart_num(const std::string &uart_num) {
+#if defined(ESP32)
+      if (uart_num == "UART_NUM_0") {
+        this->uart_num_ = UART_NUM_0;
+      } else if (uart_num == "UART_NUM_1") {
+        this->uart_num_ = UART_NUM_1;
+      } else if (uart_num == "UART_NUM_2") {
+        this->uart_num_ = UART_NUM_2;
+      }
+#else
+      if (uart_num == "UART0") {
+        this->uart_num_ = UART0;
+      }
+#endif
+    }
+
 
     void set_class_gate(uint8_t class_gate) { class_gate_ = class_gate; }
 
@@ -446,6 +460,15 @@ class NiceBusT4 : public Component, public Cover {
     uint8_t addr_from[2] = {0x00, 0x66}; //от кого пакет, адрес bust4 шлюза
     uint8_t addr_to[2]; // = 0x00ff;	 // кому пакет, адрес контроллера привода, которым управляем
     uint8_t addr_oxi[2]; // = 0x000a;	 // адрес приемника
+
+    int tx_pin_{1};  // Default TX pin
+#if defined(ESP32)
+    int rx_pin_{UART_PIN_NO_CHANGE};  // Default to no change
+    uart_port_t uart_num_{UART_NUM_0};  // Default UART number
+#else
+    int rx_pin_{-1};  // Default to -1 to indicate not set
+    uart_port_t uart_num_{UART0};  // Default UART number
+#endif
 
     std::vector<uint8_t> raw_cmd_prepare (std::string data);             // подготовка введенных пользователем данных для возможности отправки
 

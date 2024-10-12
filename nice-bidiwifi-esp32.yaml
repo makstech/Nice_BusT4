@@ -1,0 +1,21 @@
+esphome:
+  name: "nice-bidiwifi-esp32"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  # - source:
+  #     type: git
+  #     url: https://github.com/pruwait/Nice_BusT4
+  - source: 
+      type: local
+      path: components/bus_t4
+
+cover:
+  - platform: bus_t4
+    name: "Nice Cover"
+    device_class: gate
+    id: nice_cover

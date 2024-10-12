@@ -80,13 +80,13 @@ void NiceBusT4::setup() {
   };
 
   // Apply the UART configuration
-  uart_param_config(_UART_NO, &uart_config);
+  uart_param_config(this->uart_num_, &uart_config);
   // Install the UART driver with a buffer size of 256 bytes for RX and TX
-  uart_driver_install(_UART_NO, 256, 0, 0, NULL, 0);
+  uart_driver_install(this->uart_num_, 256, 0, 0, NULL, 0);
   // Set the TX and RX pins
-  uart_set_pin(_UART_NO, TX_P, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  uart_set_pin(this->uart_num_, this->tx_pin_, this->rx_pin_, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 #else
-  _uart =  uart_init(_UART_NO, BAUD_WORK, SERIAL_8N1, SERIAL_FULL, TX_P, 256, false);
+  _uart =  uart_init(this->uart_num_, BAUD_WORK, SERIAL_8N1, SERIAL_FULL, this->tx_pin_, 256, false);
 #endif
 }
 
@@ -128,11 +128,11 @@ void NiceBusT4::loop() {
   size_t buffered_length;
 
   // Get the length of data currently available in the UART RX buffer
-  uart_get_buffered_data_len(_UART_NO, &buffered_length);
+  uart_get_buffered_data_len(this->uart_num_, &buffered_length);
 
   // If there is data available, read it
   if (buffered_length > 0) {
-    while (uart_read_bytes(_UART_NO, &c, 1, 10 / portTICK_PERIOD_MS) > 0) {  // Shorter timeout
+    while (uart_read_bytes(this->uart_num_, &c, 1, 10 / portTICK_PERIOD_MS) > 0) {  // Shorter timeout
       this->handle_char_(c);  // Process the received byte
       this->last_uart_byte_ = millis();  // Store the current time for last byte received
     }
@@ -807,6 +807,7 @@ void NiceBusT4::parse_status_packet (const std::vector<uint8_t> &data) {
 
 void NiceBusT4::dump_config() {    //  добавляем в  лог информацию о подключенном контроллере
   ESP_LOGCONFIG(TAG, "  Bus T4 Cover");
+  ESP_LOGCONFIG(TAG, "  UART configured with TX Pin: %d, RX Pin: %d, UART Num: %d", this->tx_pin_, this->rx_pin_, this->uart_num_);
   /*ESP_LOGCONFIG(TAG, "  Address: 0x%02X%02X", *this->header_[1], *this->header_[2]);*/
   switch (this->class_gate_) {
     case SLIDING:
@@ -975,21 +976,21 @@ void NiceBusT4::send_array_cmd (const uint8_t *data, size_t len) {
   
 #if defined(ESP32)
   // Flush the UART input buffer
-  uart_flush_input(_UART_NO);
+  uart_flush_input(this->uart_num_);
   // Set baud rate for the break condition
-  uart_set_baudrate(_UART_NO, BAUD_BREAK);
+  uart_set_baudrate(this->uart_num_, BAUD_BREAK);
   // Send the break character at the low baud rate
-  uart_write_bytes(_UART_NO, &br_ch, 1);
+  uart_write_bytes(this->uart_num_, &br_ch, 1);
   // Wait for transmission to complete
-  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(_UART_NO, 100));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(this->uart_num_, 100));
   // Add delay to ensure the baud rate switch happens after the transmission is complete
   delayMicroseconds(90);
   // Set the working baud rate back to the normal rate
-  uart_set_baudrate(_UART_NO, BAUD_WORK);
+  uart_set_baudrate(this->uart_num_, BAUD_WORK);
   // Send the main data
-  uart_write_bytes(_UART_NO, (const char *)data, len);
+  uart_write_bytes(this->uart_num_, (const char *)data, len);
   // Wait for the main transmission to complete
-  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(_UART_NO, 100));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(uart_wait_tx_done(this->uart_num_, 100));
 #else
   uart_flush(_uart);                                               // очищаем uart
   uart_set_baudrate(_uart, BAUD_BREAK);                            // занижаем бодрэйт
